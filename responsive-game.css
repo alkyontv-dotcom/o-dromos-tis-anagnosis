@@ -1,0 +1,9 @@
+html,body{max-width:100%;overflow-x:hidden}
+html body .game-head{min-width:0;flex-wrap:wrap}
+html body .game-title{overflow-wrap:anywhere}
+html body .game-shell{max-width:100%;min-width:0}
+html body .track-wrap{width:100%;height:clamp(230px,calc(100vh - 330px),390px);min-height:230px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch}
+@supports (height:100dvh){html body .track-wrap{height:clamp(230px,calc(100dvh - 330px),390px)}}
+html body .track-svg{display:block;max-width:none;flex:none;margin:0;touch-action:pan-x pan-y;user-select:none}
+html body .game-footer{flex-wrap:wrap}
+@media(max-width:650px){html body .game-head{gap:6px}html body .game-title{font-size:clamp(18px,5vw,21px)}html body .game-footer{padding:11px 13px;gap:8px}html body .game-footer p{flex:1 1 100%;font-size:13px}html body .finish-card{padding:22px 20px}html body .finish h2{font-size:34px}}
