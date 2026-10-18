@@ -11,6 +11,13 @@
 @media(prefers-reduced-motion:reduce){.module-card,.math-level-card,.answer-scoop,.ice-cream-cone{transition:none}.math-confetti{animation:none;display:none}}
 .math-success[hidden]{display:none}
 
+.math-scoops{grid-template-columns:repeat(7,minmax(0,1fr))}
+.math-check-row{display:flex;justify-content:center;margin:18px auto 4px}
+.math-check-row .primary{min-width:min(260px,100%)}
+.ice-cream-cone.is-incorrect .scoop-target{border-color:#e79a92;background:#fff0ee}
+@media(max-width:760px){.math-scoops{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:390px){.math-scoops{grid-template-columns:repeat(3,minmax(0,1fr))}.math-check-row{margin-top:15px}}
+
 /* Dimensional, worksheet-inspired artwork for the math game. */
 .math-cones{gap:14px 18px;max-width:900px}
 .ice-cream-cone{padding:3px 4px 0;overflow:visible}
@@ -41,3 +48,5 @@
 @media(max-width:390px){.cone-art{width:min(158px,100%)}.math-equation{font-size:clamp(15px,4vw,19px)}.scoop-target{width:58px;height:58px}.scoop-target .answer-scoop{width:52px;height:52px;min-width:52px;min-height:52px}.scoop-target .scoop-number{font-size:14px}.answer-scoop{min-width:62px;min-height:62px}}
 @media(orientation:landscape) and (max-height:500px){.cone-art{width:min(150px,100%)}.scoop-target{top:55%}.answer-scoop{width:66px;height:66px;min-width:60px;min-height:60px}}
 .module-card-copy{display:block}.module-card-title{display:block;font-size:clamp(20px,3vw,27px);font-weight:1000;line-height:1.15;margin:0 0 8px}.module-card-description{display:block;font-size:15px;color:#6c7b8f;line-height:1.45}
+.reading-entry-options.home-actions{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:650px){.reading-entry-options.home-actions{grid-template-columns:1fr}}
