@@ -1,0 +1,12 @@
+/* Shared ice-cream maths visuals plus the added third-grade exercise layouts. */
+.module-card.third-math{background:linear-gradient(145deg,#fff0c9,#e6f4ff 58%,#f1eaff)}
+.third-math-art{height:92px;gap:10px}
+.third-math-art-scoop{font-size:54px;filter:drop-shadow(0 5px 4px #56647b22)}
+.third-math-art-numbers{padding:9px 11px;border-radius:15px;background:#fff;color:#5970cd;font-size:clamp(17px,2.2vw,24px);font-weight:1000;box-shadow:0 4px 0 #6575ce1a;white-space:nowrap}
+.math-equation.math-vertical{position:absolute;z-index:2;top:33.6%;left:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:stretch;width:max-content;max-width:72%;min-width:0;min-height:0;box-sizing:border-box;padding:0;text-align:right;font-size:clamp(13px,1.5vw,18px);line-height:1.12;font-variant-numeric:tabular-nums;white-space:nowrap;overflow-wrap:normal;text-shadow:0 1px 0 #fff}
+.math-vertical-row{display:grid;grid-template-columns:1.1em var(--number-width);column-gap:0;align-items:baseline;width:100%}
+.math-operation{box-sizing:border-box;padding-right:.12em;text-align:right}
+.math-vertical-number{text-align:right}
+.math-vertical-rule{display:block;width:100%;margin-top:1px;border-bottom:2px solid #3a4960}
+.answer-scoop.long-answer{font-size:clamp(15px,2vw,19px)}
+@media(max-width:760px){.third-math-art{height:70px}.third-math-art-scoop{font-size:45px}.math-equation.math-vertical{font-size:clamp(13px,3.5vw,16px)}}
