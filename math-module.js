@@ -3,6 +3,7 @@
   'use strict';
 
   const KEY = 'math_ice_cream_progress_v1';
+  const THIRD_KEY = 'math_ice_cream_third_grade_progress_v1';
   const SETTINGS = {
     0: { max: 10, operands: 2 },
     1: { max: 20, operands: 2 },
@@ -12,9 +13,21 @@
     5: { max: 100, operands: 2 },
     6: { max: 100, operands: 3 }
   };
+  const THIRD_SETTINGS = {
+    0: { answerMax: 1980, description: 'Πρόσθεση και αφαίρεση στρογγυλών τριψήφιων αριθμών', alternating: true },
+    1: { answerMax: 100, description: 'Πολλαπλασιασμός έως το 10', operation: '×' },
+    2: { answerMax: 10, description: 'Διαίρεση με ακέραιο αποτέλεσμα', operation: '÷' },
+    3: { answerMax: 297, description: 'Κάθετες πράξεις με τρεις αριθμούς', alternating: true, vertical: true },
+    4: { answerMax: 1998, description: 'Κάθετη πρόσθεση και αφαίρεση δύο τριψήφιων αριθμών', alternating: true, vertical: true },
+    5: { answerMax: 990, description: 'Πρόσθεση και αφαίρεση τριών αριθμών, αποτέλεσμα έως 990', alternating: true, vertical: true },
+    6: { answerMax: 1000, description: 'Πολλαπλασιασμός με αριθμούς έως 100 και έως 10', operation: '×' },
+    7: { answerMax: 100, description: 'Διαίρεση με αριθμούς έως 100 και έως 10, με ακέραιο αποτέλεσμα', operation: '÷' }
+  };
   const SCOOP_COLORS = ['#f45b91', '#ffd23f', '#28b9e8', '#42c879', '#9a65e8', '#ff8b32'];
   let appShow = (id) => document.querySelectorAll('.screen').forEach(screen => screen.classList.toggle('active', screen.id === id));
+  let currentCurriculum = 'primary';
   let progress = freshProgress();
+  const thirdCardNumbers = {};
   let currentLevel = 0;
   let currentRound = null;
   let assignedAnswers = new Map();
@@ -31,17 +44,17 @@
   function freshLevelStats() {
     return { completedRounds: 0, correctMatches: 0, incorrectAttempts: 0, bestMistakes: null };
   }
-  function freshProgress() {
+  function freshProgress(maxLevel = 6) {
     const levels = {};
-    for (let i = 0; i <= 6; i++) levels[i] = freshLevelStats();
+    for (let i = 0; i <= maxLevel; i++) levels[i] = freshLevelStats();
     return { version: 1, lastLevel: 0, levels };
   }
-  function normaliseProgress(value) {
-    const clean = freshProgress();
+  function normaliseProgress(value, maxLevel = 6) {
+    const clean = freshProgress(maxLevel);
     if (!value || typeof value !== 'object' || value.version !== 1) return clean;
     const remembered = Number(value.lastLevel);
-    if (Number.isInteger(remembered) && SETTINGS[remembered]) clean.lastLevel = remembered;
-    for (let i = 0; i <= 6; i++) {
+    if (Number.isInteger(remembered) && (maxLevel === 7 ? THIRD_SETTINGS : SETTINGS)[remembered]) clean.lastLevel = remembered;
+    for (let i = 0; i <= maxLevel; i++) {
       const saved = value.levels && value.levels[i];
       if (!saved || typeof saved !== 'object') continue;
       for (const key of ['completedRounds', 'correctMatches', 'incorrectAttempts']) {
@@ -55,14 +68,15 @@
   }
   function loadProgress() {
     try {
-      const raw = window.localStorage.getItem(KEY);
-      progress = raw ? normaliseProgress(JSON.parse(raw)) : freshProgress();
+      const maxLevel = currentCurriculum === 'third' ? 7 : 6;
+      const raw = window.localStorage.getItem(currentCurriculum === 'third' ? THIRD_KEY : KEY);
+      progress = raw ? normaliseProgress(JSON.parse(raw), maxLevel) : freshProgress(maxLevel);
     } catch {
-      progress = freshProgress();
+      progress = freshProgress(currentCurriculum === 'third' ? 7 : 6);
     }
   }
   function saveProgress() {
-    try { window.localStorage.setItem(KEY, JSON.stringify(progress)); }
+    try { window.localStorage.setItem(currentCurriculum === 'third' ? THIRD_KEY : KEY, JSON.stringify(progress)); }
     catch { /* The module remains playable when browser storage is disabled. */ }
   }
   function randomInt(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
@@ -156,34 +170,150 @@
     if (!validRound(fallback, settings)) throw new Error('Δεν δημιουργήθηκε έγκυρος γύρος');
     return fallback;
   }
+  function thirdOperationForCard(level, cardNumber) {
+    const settings = THIRD_SETTINGS[level];
+    if (settings.alternating) return cardNumber % 2 === 0 ? '+' : '-';
+    return settings.operation;
+  }
+  function createThirdExercise(level, operation) {
+    const int = (min, max) => randomInt(min, max);
+    let operands;
+    if (level === 0) {
+      const a = int(12, 99) * 10, b = int(12, 99) * 10;
+      operands = operation === '+' ? [a, b] : [Math.max(a, b), Math.min(a, b)];
+    } else if (level === 1) {
+      operands = [int(1, 10), int(1, 10)];
+    } else if (level === 2) {
+      const divisor = int(1, 10), quotient = int(1, Math.floor(10 / divisor));
+      operands = [divisor * quotient, divisor];
+    } else if (level === 3) {
+      if (operation === '+') operands = [int(10, 99), int(10, 99), int(10, 99)];
+      else { const first = int(20, 99), second = int(0, first); operands = [first, second, int(0, first - second)]; }
+    } else if (level === 4) {
+      const a = int(100, 999), b = int(100, 999);
+      operands = operation === '+' ? [a, b] : [Math.max(a, b), Math.min(a, b)];
+    } else if (level === 5) {
+      if (operation === '+') operands = [int(0, 330), int(0, 330), int(0, 330)];
+      else { const first = int(0, 990), second = int(0, first); operands = [first, second, int(0, first - second)]; }
+    } else if (level === 6) {
+      operands = [int(1, 100), int(1, 10)];
+    } else {
+      const quotient = int(1, 100), divisor = int(1, Math.min(10, Math.floor(100 / quotient)));
+      operands = [quotient * divisor, divisor];
+    }
+    const operators = Array(operands.length - 1).fill(operation);
+    const answer = operands.slice(1).reduce((value, next) => operation === '+' ? value + next : operation === '-' ? value - next : operation === '×' ? value * next : value / next, operands[0]);
+    const exercise = { operands, operators, answer, vertical: Boolean(THIRD_SETTINGS[level].vertical) };
+    exercise.text = operands.slice(1).reduce((text, value, i) => text + ' ' + (operation === '-' ? '−' : operation) + ' ' + value, String(operands[0])) + ' = ?';
+    return exercise;
+  }
+  function thirdAnswerDomain(level, operation) {
+    const range = (min, max, step = 1) => Array.from({ length: Math.floor((max - min) / step) + 1 }, (_, i) => min + i * step);
+    if (level === 0) return operation === '+' ? range(240, 1980, 10) : range(0, 870, 10);
+    if (level === 1) return [...new Set(range(1, 10).flatMap(a => range(1, 10).map(b => a * b)))];
+    if (level === 2) return range(1, 10);
+    if (level === 3) return operation === '+' ? range(30, 297) : range(0, 99);
+    if (level === 4) return operation === '+' ? range(200, 1998) : range(0, 899);
+    if (level === 5) return range(0, 990);
+    if (level === 6) return [...new Set(range(1, 100).flatMap(a => range(1, 10).map(b => a * b)))];
+    return range(1, 100);
+  }
+  function validThirdRound(round, level, operation) {
+    const settings = THIRD_SETTINGS[level];
+    if (!settings || (settings.alternating ? !['+', '-'].includes(operation) : operation !== settings.operation)) return false;
+    if (!round || round.expressions.length !== 6 || round.scoops.length !== 7) return false;
+    const results = new Set();
+    for (const item of round.expressions) {
+      if (item.operators.length !== item.operands.length - 1 || item.operators.some(op => op !== operation)) return false;
+      if (item.operands.some(n => !Number.isInteger(n) || n < 0)) return false;
+      let value = item.operands[0];
+      for (let i = 0; i < item.operators.length; i++) {
+        const op = item.operators[i], next = item.operands[i + 1];
+        value = op === '+' ? value + next : op === '-' ? value - next : op === '×' ? value * next : value / next;
+        if (!Number.isInteger(value) || value < 0) return false;
+      }
+      if (value !== item.answer || value > THIRD_SETTINGS[level].answerMax || results.has(value)) return false;
+      results.add(value);
+      if (level === 0 && item.operands.some(n => n < 100 || n > 999 || n % 10 !== 0)) return false;
+      if (level === 1 && item.operands.some(n => n < 1 || n > 10)) return false;
+      if (level === 2 && item.operands.some(n => n < 1 || n > 10)) return false;
+      if (level === 3 && item.operands.length !== 3) return false;
+      if (level === 4 && (item.operands.length !== 2 || item.operands.some(n => n < 100 || n > 999))) return false;
+      if (level === 5 && (item.operands.length !== 3 || value > 990)) return false;
+      if (level === 6 && (item.operands.length !== 2 || item.operands[0] < 1 || item.operands[0] > 100 || item.operands[1] < 1 || item.operands[1] > 10)) return false;
+      if (level === 7 && (item.operands.length !== 2 || item.operands[0] < 1 || item.operands[0] > 100 || item.operands[1] < 1 || item.operands[1] > 10 || item.operands[0] % item.operands[1] !== 0)) return false;
+    }
+    const scoopSet = new Set(round.scoops), domain = new Set(thirdAnswerDomain(level, operation));
+    return scoopSet.size === 7 && results.size === 6 && results.size === round.scoops.filter(n => results.has(n)).length
+      && round.scoops.every(n => Number.isInteger(n) && domain.has(n))
+      && !results.has(round.distractor) && scoopSet.has(round.distractor);
+  }
+  function generateThirdRound(level, operation = thirdOperationForCard(level, 0)) {
+    const settings = THIRD_SETTINGS[level];
+    if (!settings || !['+', '-', '×', '÷'].includes(operation)) throw new Error('Άγνωστο επίπεδο ή πράξη Γ΄ Δημοτικού');
+    for (let attempt = 0; attempt < 12000; attempt++) {
+      const expressions = [], usedAnswers = new Set(), usedQuestions = new Set();
+      for (let i = 0; i < 6; i++) {
+        let exercise = null;
+        for (let tries = 0; tries < 180; tries++) {
+          const candidate = createThirdExercise(level, operation);
+          const identity = candidate.operands.join(',') + candidate.operators.join('');
+          if (!usedAnswers.has(candidate.answer) && !usedQuestions.has(identity)) { exercise = candidate; usedAnswers.add(candidate.answer); usedQuestions.add(identity); break; }
+        }
+        if (!exercise) break;
+        expressions.push(exercise);
+      }
+      if (expressions.length !== 6) continue;
+      const distractors = thirdAnswerDomain(level, operation).filter(n => !usedAnswers.has(n));
+      const round = { expressions, distractor: distractors[randomInt(0, distractors.length - 1)] };
+      round.scoops = shuffle([...usedAnswers, round.distractor]);
+      if (validThirdRound(round, level, operation)) return round;
+    }
+    throw new Error('Δεν δημιουργήθηκε έγκυρη κάρτα για το επίπεδο ' + level);
+  }
+  function renderExercise(item) {
+    if (!item.vertical) return '<span class="math-equation">' + item.text + '</span>';
+    const sign = item.operators[0] === '-' ? '−' : item.operators[0];
+    const numberWidth = Math.max(...item.operands.map(n => String(n).length));
+    const rows = item.operands.map((n, i) => '<span class="math-vertical-row"><span class="math-operation">' + (i === item.operands.length - 1 ? sign : '') + '</span><span class="math-vertical-number">' + n + '</span></span>').join('');
+    return '<span class="math-equation math-vertical" style="--number-width:' + numberWidth + 'ch" role="img" aria-label="' + item.text + '">' + rows + '<span class="math-vertical-rule"></span></span>';
+  }
   function renderLevels() {
-    const grid = document.querySelector('#mathLevelGrid');
+    const isThird = currentCurriculum === 'third';
+    const levelSettings = isThird ? THIRD_SETTINGS : SETTINGS;
+    const grid = document.querySelector(isThird ? '#thirdMathLevelGrid' : '#mathLevelGrid');
     if (!grid) return;
     grid.innerHTML = '';
-    for (let level = 0; level <= 6; level++) {
-      const settings = SETTINGS[level];
+    for (let level = 0; level <= (isThird ? 7 : 6); level++) {
+      const settings = levelSettings[level];
       const stats = progress.levels[level];
       const card = document.createElement('button');
       card.type = 'button';
       card.className = 'math-level-card' + (level === progress.lastLevel ? ' is-last' : '');
       card.style.setProperty('--level-color', SCOOP_COLORS[level % SCOOP_COLORS.length]);
-      card.setAttribute('aria-label', 'Άνοιγμα βαθμίδας ' + level + ', μέχρι το ' + settings.max);
-      card.innerHTML = '<span class="level-number">' + level + '</span><h2>Βαθμίδα ' + level + (level === 0 ? ' · Ξεκινάμε!' : '') + '</h2><p>' + (level === 0 ? '6 πράξεις · 3 προσθέσεις και 3 αφαιρέσεις · μέχρι το 10' : 'Προσθέσεις και αφαιρέσεις · αριθμοί και αποτέλεσμα: 0–' + settings.max + ' · ' + settings.operands + ' αριθμοί') + '</p><small>' + stats.completedRounds + ' ολοκληρωμένοι γύροι · ' + (stats.bestMistakes === null ? 'χωρίς επίδοση ακόμη' : 'καλύτερη επίδοση: ' + stats.bestMistakes + (stats.bestMistakes === 1 ? ' λαθάκι' : ' λαθάκια')) + (level === progress.lastLevel ? '<span class="resume-hint"> · τελευταία βαθμίδα</span>' : '') + '</small>';
-      card.addEventListener('click', () => startRound(level));
+      card.setAttribute('aria-label', isThird ? 'Άνοιγμα επιπέδου ' + level + ': ' + settings.description : 'Άνοιγμα βαθμίδας ' + level + ', μέχρι το ' + settings.max);
+      card.innerHTML = '<span class="level-number">' + level + '</span><h2>' + (isThird ? 'Επίπεδο ' : 'Βαθμίδα ') + level + (!isThird && level === 0 ? ' · Ξεκινάμε!' : '') + '</h2><p>' + (isThird ? settings.description : (level === 0 ? '6 πράξεις · 3 προσθέσεις και 3 αφαιρέσεις · μέχρι το 10' : 'Προσθέσεις και αφαιρέσεις · αριθμοί και αποτέλεσμα: 0–' + settings.max + ' · ' + settings.operands + ' αριθμοί')) + '</p><small>' + stats.completedRounds + ' ολοκληρωμένοι γύροι · ' + (stats.bestMistakes === null ? 'χωρίς επίδοση ακόμη' : 'καλύτερη επίδοση: ' + stats.bestMistakes + (stats.bestMistakes === 1 ? ' λαθάκι' : ' λαθάκια')) + (level === progress.lastLevel ? '<span class="resume-hint"> · τελευταία βαθμίδα</span>' : '') + '</small>';
+      card.addEventListener('click', () => {
+        if (currentCurriculum === 'third') thirdCardNumbers[level] = 0;
+        startRound(level);
+      });
       grid.append(card);
     }
     const note = document.querySelector('#mathStorageNote');
     if (note) note.textContent = 'Η πρόοδος αποθηκεύεται σε αυτή τη συσκευή. Καλύτερη επίδοση: τα λιγότερα λαθάκια σε έναν ολοκληρωμένο γύρο. Δεν γίνεται συγχρονισμός μεταξύ συσκευών.';
   }
   function renderRound() {
-    const settings = SETTINGS[currentLevel];
-    document.querySelector('#mathGameTitle').textContent = 'Παγωτά και Μαθηματικά · Βαθμίδα ' + currentLevel;
-    document.querySelector('#mathGameMeta').textContent = 'Μέχρι το ' + settings.max + ' · ' + settings.operands + ' αριθμοί σε κάθε πράξη';
+    const isThird = currentCurriculum === 'third';
+    const settings = isThird ? THIRD_SETTINGS[currentLevel] : SETTINGS[currentLevel];
+    document.querySelector('#mathGameTitle').textContent = (isThird ? 'Μαθηματικά Γ΄ Δημοτικού · Επίπεδο ' : 'Παγωτά και Μαθηματικά · Βαθμίδα ') + currentLevel;
+    document.querySelector('#mathLevelsBack').textContent = isThird ? '← Στα επίπεδα' : '← Στις βαθμίδες';
+    document.querySelector('#mathSuccessLevels').textContent = isThird ? 'Πίσω στα επίπεδα' : 'Πίσω στις βαθμίδες';
+    document.querySelector('#mathGameMeta').textContent = isThird ? settings.description + (settings.alternating ? ' · Κάρτα ' + (thirdCardNumbers[currentLevel] + 1) + ' · ' + (thirdOperationForCard(currentLevel, thirdCardNumbers[currentLevel]) === '+' ? 'Πρόσθεση' : 'Αφαίρεση') : '') : 'Μέχρι το ' + settings.max + ' · ' + settings.operands + ' αριθμοί σε κάθε πράξη';
     document.querySelector('#mathFeedback').textContent = 'Σύρε κάθε απάντηση στο παγωτό με τη σωστή πράξη.';
     const cones = document.querySelector('#mathCones');
-    cones.innerHTML = currentRound.expressions.map((item, index) => '<article class="ice-cream-cone" data-cone="' + index + '" role="group" tabindex="0" aria-label="Παγωτό ' + (index + 1) + ': ' + item.text + '"><div class="cone-art"><svg class="cone-illustration" viewBox="0 0 220 250" aria-hidden="true" focusable="false"><defs><linearGradient id="coneGold' + index + '" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffd47a"/><stop offset=".48" stop-color="#ef9b42"/><stop offset="1" stop-color="#bb612b"/></linearGradient><linearGradient id="cream' + index + '" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fffefa"/><stop offset=".66" stop-color="#fffdf6"/><stop offset="1" stop-color="#f5e9d6"/></linearGradient><pattern id="waffle' + index + '" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(42)"><path d="M0 0V18 M9 0V18 M-9 9L9 -9 M0 18L18 0 M9 27L27 9" stroke="#ffe09a" stroke-width="3"/><path d="M3 0V18 M12 0V18 M-9 15L9 33 M0 -3L18 15 M9 9L27 27" stroke="#a95427" stroke-opacity=".55" stroke-width="1.5"/></pattern><clipPath id="coneClip' + index + '"><path d="M52 137 Q110 150 168 137 L116 238 Q110 247 104 238Z"/></clipPath></defs><path d="M52 137 Q110 150 168 137 L116 238 Q110 247 104 238Z" fill="url(#coneGold' + index + ')" stroke="#593a2c" stroke-width="4" stroke-linejoin="round"/><path d="M52 137 Q110 150 168 137 L116 238 Q110 247 104 238Z" fill="url(#waffle' + index + ')" clip-path="url(#coneClip' + index + ')"/><path d="M58 138 Q110 149 162 138" fill="none" stroke="#75452d" stroke-width="3"/><path d="M30 116 C18 111 16 96 27 87 C22 72 32 60 47 59 C49 42 64 35 79 42 C89 24 111 22 124 38 C140 27 160 34 162 51 C180 48 193 61 188 77 C204 88 199 107 184 113 C180 129 163 137 149 129 C137 144 117 146 105 134 C91 145 71 139 66 126 C50 136 35 131 30 116Z" fill="url(#cream' + index + ')" stroke="#554238" stroke-width="4" stroke-linejoin="round"/><path d="M39 100 C41 87 53 80 66 83 M83 51 C94 42 105 43 112 49 M139 50 C149 49 156 56 157 64" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".85"/><path d="M39 116 C64 127 76 119 87 126 C100 134 119 136 130 126 C145 136 164 129 174 117" fill="none" stroke="#eadbc7" stroke-width="4" stroke-linecap="round" opacity=".68"/></svg><span class="math-equation">' + item.text + '</span><div class="scoop-target" data-target="' + index + '" aria-label="Θέση απάντησης"><span>?</span></div></div></article>').join('');
+    cones.innerHTML = currentRound.expressions.map((item, index) => '<article class="ice-cream-cone" data-cone="' + index + '" role="group" tabindex="0" aria-label="Παγωτό ' + (index + 1) + ': ' + item.text + '"><div class="cone-art"><svg class="cone-illustration" viewBox="0 0 220 250" aria-hidden="true" focusable="false"><defs><linearGradient id="coneGold' + index + '" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffd47a"/><stop offset=".48" stop-color="#ef9b42"/><stop offset="1" stop-color="#bb612b"/></linearGradient><linearGradient id="cream' + index + '" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fffefa"/><stop offset=".66" stop-color="#fffdf6"/><stop offset="1" stop-color="#f5e9d6"/></linearGradient><pattern id="waffle' + index + '" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(42)"><path d="M0 0V18 M9 0V18 M-9 9L9 -9 M0 18L18 0 M9 27L27 9" stroke="#ffe09a" stroke-width="3"/><path d="M3 0V18 M12 0V18 M-9 15L9 33 M0 -3L18 15 M9 9L27 27" stroke="#a95427" stroke-opacity=".55" stroke-width="1.5"/></pattern><clipPath id="coneClip' + index + '"><path d="M52 137 Q110 150 168 137 L116 238 Q110 247 104 238Z"/></clipPath></defs><path d="M52 137 Q110 150 168 137 L116 238 Q110 247 104 238Z" fill="url(#coneGold' + index + ')" stroke="#593a2c" stroke-width="4" stroke-linejoin="round"/><path d="M52 137 Q110 150 168 137 L116 238 Q110 247 104 238Z" fill="url(#waffle' + index + ')" clip-path="url(#coneClip' + index + ')"/><path d="M58 138 Q110 149 162 138" fill="none" stroke="#75452d" stroke-width="3"/><path d="M30 116 C18 111 16 96 27 87 C22 72 32 60 47 59 C49 42 64 35 79 42 C89 24 111 22 124 38 C140 27 160 34 162 51 C180 48 193 61 188 77 C204 88 199 107 184 113 C180 129 163 137 149 129 C137 144 117 146 105 134 C91 145 71 139 66 126 C50 136 35 131 30 116Z" fill="url(#cream' + index + ')" stroke="#554238" stroke-width="4" stroke-linejoin="round"/><path d="M39 100 C41 87 53 80 66 83 M83 51 C94 42 105 43 112 49 M139 50 C149 49 156 56 157 64" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".85"/><path d="M39 116 C64 127 76 119 87 126 C100 134 119 136 130 126 C145 136 164 129 174 117" fill="none" stroke="#eadbc7" stroke-width="4" stroke-linecap="round" opacity=".68"/></svg>' + renderExercise(item) + '<div class="scoop-target" data-target="' + index + '" aria-label="Θέση απάντησης"><span>?</span></div></div></article>').join('');
     const bank = document.querySelector('#mathScoopBank');
-    bank.innerHTML = currentRound.scoops.map((answer, index) => '<button type="button" class="answer-scoop" data-scoop="' + index + '" data-answer="' + answer + '" style="--scoop:' + SCOOP_COLORS[index % SCOOP_COLORS.length] + '" aria-label="Απάντηση ' + answer + '"><span class="scoop-number">' + answer + '</span><span class="scoop-sprinkles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></button>').join('');
+    bank.innerHTML = currentRound.scoops.map((answer, index) => '<button type="button" class="answer-scoop' + (answer >= 1000 ? ' long-answer' : '') + '" data-scoop="' + index + '" data-answer="' + answer + '" style="--scoop:' + SCOOP_COLORS[index % SCOOP_COLORS.length] + '" aria-label="Απάντηση ' + answer + '"><span class="scoop-number">' + answer + '</span><span class="scoop-sprinkles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></button>').join('');
     dismissSuccessCard();
     syncCheckButton();
     document.querySelector('#mathFeedback').setAttribute('aria-live', 'polite');
@@ -193,7 +323,10 @@
     resultKind = null;
     progress.lastLevel = currentLevel;
     saveProgress();
-    currentRound = generateRound(currentLevel);
+    if (currentCurriculum === 'third') {
+      if (!Number.isInteger(thirdCardNumbers[currentLevel])) thirdCardNumbers[currentLevel] = 0;
+      currentRound = generateThirdRound(currentLevel, thirdOperationForCard(currentLevel, thirdCardNumbers[currentLevel]));
+    } else currentRound = generateRound(currentLevel);
     assignedAnswers = new Map();
     lockedTargets = new Set();
     roundChecked = false;
@@ -205,10 +338,24 @@
     appShow('mathGame');
   }
   function openModule() {
+    currentCurriculum = 'primary';
+    loadProgress();
     dismissSuccessCard();
     clearRoundState();
     renderLevels();
     appShow('mathHome');
+  }
+  function openThirdModule() {
+    currentCurriculum = 'third';
+    loadProgress();
+    dismissSuccessCard();
+    clearRoundState();
+    renderLevels();
+    appShow('thirdMathHome');
+  }
+  function openCurrentModule() {
+    if (currentCurriculum === 'third') openThirdModule();
+    else openModule();
   }
   function dismissSuccessCard() {
     const card = document.querySelector('#mathSuccess');
@@ -258,6 +405,7 @@
     document.querySelector('#mathSuccessMessage').textContent = 'Έλυσες όλες τις πράξεις. Είσαι σπουδαίος μαθηματικός!';
     document.querySelector('#mathReplay').textContent = 'Επανάληψη';
     document.querySelector('#mathNextRound').hidden = false;
+    document.querySelector('#mathNextRound').textContent = currentCurriculum === 'third' ? 'Επόμενη κάρτα' : 'Επόμενος γύρος';
     document.querySelector('#mathSuccess').hidden = false;
     const container = document.querySelector('#mathSuccess');
     container.querySelectorAll('.math-confetti').forEach(node => node.remove());
@@ -386,8 +534,10 @@
     loadProgress();
     currentLevel = progress.lastLevel;
     document.querySelector('#mathModuleCard').addEventListener('click', openModule);
+    document.querySelector('#thirdMathModuleCard').addEventListener('click', openThirdModule);
     document.querySelector('#mathHomeBack').addEventListener('click', () => appShow('appHome'));
-    document.querySelector('#mathLevelsBack').addEventListener('click', openModule);
+    document.querySelector('#thirdMathHomeBack').addEventListener('click', () => appShow('appHome'));
+    document.querySelector('#mathLevelsBack').addEventListener('click', openCurrentModule);
     document.querySelector('#mathReplay').addEventListener('click', () => {
       if (resultKind === 'incorrect') {
         dismissSuccessCard();
@@ -396,8 +546,11 @@
       }
       startRound(currentLevel);
     });
-    document.querySelector('#mathNextRound').addEventListener('click', () => startRound(currentLevel));
-    document.querySelector('#mathSuccessLevels').addEventListener('click', openModule);
+    document.querySelector('#mathNextRound').addEventListener('click', () => {
+      if (currentCurriculum === 'third' && THIRD_SETTINGS[currentLevel].alternating) thirdCardNumbers[currentLevel]++;
+      startRound(currentLevel);
+    });
+    document.querySelector('#mathSuccessLevels').addEventListener('click', openCurrentModule);
     document.querySelector('#mathSuccessHome').addEventListener('click', () => { dismissSuccessCard(); clearRoundState(); appShow('appHome'); });
     document.querySelector('#mathCheckAnswers').addEventListener('click', checkAnswers);
     document.querySelector('#mathCones').addEventListener('click', event => {
@@ -436,5 +589,5 @@
     renderLevels();
   }
 
-  window.MathIceCream = { init, generateRound, validRound, settings: SETTINGS, storageKey: KEY };
+  window.MathIceCream = { init, generateRound, validRound, generateThirdRound, validThirdRound, thirdOperationForCard, settings: SETTINGS, thirdSettings: THIRD_SETTINGS, storageKey: KEY, thirdStorageKey: THIRD_KEY };
 })();
